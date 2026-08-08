@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio v4</title>
+<title>Liminoid Banner Studio v5</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6 py-10">
 
 <div class="max-w-2xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
-  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v4</h1>
-  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ スクレイピング ＋ HTML自動ソート＆更新</p>
+  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v5</h1>
+  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ 自動スクレイピング ＋ HTML自動ソート＆更新</p>
 
   <!-- GitHub設定 -->
   <details class="mb-6 bg-neutral-900/50 border border-neutral-700 rounded-xl p-4 text-xs">
@@ -23,11 +23,11 @@
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="block text-neutral-400 mb-1">ユーザー名:</label>
-          <input type="text" id="gh-user" value="matsuzakiyuta" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white">
+          <input type="text" id="gh-user" value="yutamatsuzaki09" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white">
         </div>
         <div>
           <label class="block text-neutral-400 mb-1">リポジトリ名:</label>
-          <input type="text" id="gh-repo" value="Liminoid" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white">
+          <input type="text" id="gh-repo" value="liminoid" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white">
         </div>
       </div>
       <button id="save-settings" class="bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-1.5 rounded transition-colors">設定をブラウザに保存</button>
@@ -72,9 +72,16 @@
       </div>
     </div>
 
-    <!-- プレビュー画像 -->
+    <!-- プレビュー画像と背景色切り替え -->
     <div>
-      <p class="text-sm font-bold mb-2">③ 生成画像プレビュー</p>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-bold">③ 生成画像プレビュー</p>
+        <div class="flex items-center gap-2 bg-neutral-900 border border-neutral-700 rounded-lg p-1 text-xs">
+          <span class="text-neutral-400 pl-1">背景:</span>
+          <button id="bg-transparent-btn" class="px-2 py-1 rounded font-bold bg-neutral-700 text-white">透過</button>
+          <button id="bg-white-btn" class="px-2 py-1 rounded font-bold text-neutral-400 hover:text-white">白背景</button>
+        </div>
+      </div>
       <div class="w-full aspect-[16/9] bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px] border border-neutral-700 rounded-lg overflow-hidden flex items-center justify-center">
         <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
       </div>
@@ -106,13 +113,18 @@ const cardDescInput = document.getElementById('card-desc');
 const publishBtn = document.getElementById('publish-btn');
 const statusMsg = document.getElementById('status-msg');
 
+const bgTransparentBtn = document.getElementById('bg-transparent-btn');
+const bgWhiteBtn = document.getElementById('bg-white-btn');
+
 // 設定関連
 const ghTokenInput = document.getElementById('gh-token');
 const ghUserInput = document.getElementById('gh-user');
 const ghRepoInput = document.getElementById('gh-repo');
 const saveSettingsBtn = document.getElementById('save-settings');
 
+let loadedImage = null;
 let currentFileName = "";
+let isWhiteBg = false;
 
 // 今日の日付をセットする関数
 function setTodayDate() {
@@ -121,12 +133,10 @@ function setTodayDate() {
 }
 setTodayDate();
 
-// ----------------------------------------------------
 // 初期設定読み込み
-// ----------------------------------------------------
 ghTokenInput.value = localStorage.getItem('gh_token') || '';
-ghUserInput.value = localStorage.getItem('gh_user') || 'matsuzakiyuta';
-ghRepoInput.value = localStorage.getItem('gh_repo') || 'Liminoid';
+ghUserInput.value = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
+ghRepoInput.value = localStorage.getItem('gh_repo') || 'liminoid';
 
 saveSettingsBtn.addEventListener('click', () => {
   localStorage.setItem('gh_token', ghTokenInput.value.trim());
@@ -138,9 +148,43 @@ saveSettingsBtn.addEventListener('click', () => {
 canvas.width = 1920;
 canvas.height = 1080;
 
-// ----------------------------------------------------
+// キャンバス描画処理
+function renderCanvas() {
+  if (!loadedImage) return;
+  ctx.clearRect(0, 0, 1920, 1080);
+
+  if (isWhiteBg) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1920, 1080);
+  }
+
+  const maxW = 1920 * 0.8;
+  const maxH = 1080 * 0.8;
+  const ratio = Math.min(maxW / loadedImage.width, maxH / loadedImage.height);
+  const newW = loadedImage.width * ratio;
+  const newH = loadedImage.height * ratio;
+  const posX = (1920 - newW) / 2;
+  const posY = (1080 - newH) / 2;
+
+  ctx.drawImage(loadedImage, posX, posY, newW, newH);
+}
+
+// 背景切り替えイベント
+bgTransparentBtn.addEventListener('click', () => {
+  isWhiteBg = false;
+  bgTransparentBtn.className = "px-2 py-1 rounded font-bold bg-neutral-700 text-white";
+  bgWhiteBtn.className = "px-2 py-1 rounded font-bold text-neutral-400 hover:text-white";
+  renderCanvas();
+});
+
+bgWhiteBtn.addEventListener('click', () => {
+  isWhiteBg = true;
+  bgWhiteBtn.className = "px-2 py-1 rounded font-bold bg-white text-black";
+  bgTransparentBtn.className = "px-2 py-1 rounded font-bold text-neutral-400 hover:text-white";
+  renderCanvas();
+});
+
 // 画像ドロップ処理
-// ----------------------------------------------------
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-red-500'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-500'));
@@ -161,17 +205,8 @@ function processImage(file) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      ctx.clearRect(0, 0, 1920, 1080);
-      const maxW = 1920 * 0.8;
-      const maxH = 1080 * 0.8;
-      const ratio = Math.min(maxW / img.width, maxH / img.height);
-      const newW = img.width * ratio;
-      const newH = img.height * ratio;
-      const posX = (1920 - newW) / 2;
-      const posY = (1080 - newH) / 2;
-
-      ctx.drawImage(img, posX, posY, newW, newH);
-      
+      loadedImage = img;
+      renderCanvas();
       editorArea.classList.remove('hidden');
       editorArea.classList.add('flex');
     };
@@ -180,9 +215,7 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
-// ----------------------------------------------------
-// URLから情報を自動抽出
-// ----------------------------------------------------
+// URLから情報を自動抽出（複数プロキシ試行）
 fetchBtn.addEventListener('click', async () => {
   const url = targetUrlInput.value.trim();
   if (!url) return alert('URLを入力してください');
@@ -190,18 +223,44 @@ fetchBtn.addEventListener('click', async () => {
   fetchBtn.textContent = "取得中...";
   fetchBtn.disabled = true;
 
+  let htmlContent = "";
+
+  // 1. Allorigins プロキシ
   try {
-    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
-    const res = await fetch(proxyUrl);
-    const data = await res.json();
-    
+    const proxyUrl1 = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
+    const res = await fetch(proxyUrl1);
+    if (res.ok) {
+      const data = await res.json();
+      htmlContent = data.contents;
+    }
+  } catch(e) {}
+
+  // 2. Codetabs プロキシ (フォールバック)
+  if (!htmlContent) {
+    try {
+      const proxyUrl2 = "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url);
+      const res = await fetch(proxyUrl2);
+      if (res.ok) {
+        htmlContent = await res.text();
+      }
+    } catch(e) {}
+  }
+
+  if (!htmlContent) {
+    alert('対象サイトのセキュリティ制限により自動抽出できませんでした。タイトルと説明文は手動で入力してください（※画像公開はそのまま行えます）。');
+    fetchBtn.textContent = "自動抽出";
+    fetchBtn.disabled = false;
+    return;
+  }
+
+  try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(data.contents, "text/html");
+    const doc = parser.parseFromString(htmlContent, "text/html");
     
     let title = doc.querySelector('meta[property="og:title"]')?.content || doc.title || "";
     let desc = doc.querySelector('meta[property="og:description"]')?.content || doc.querySelector('meta[name="description"]')?.content || "";
 
-    // === 📅 日付の自動抽出ロジック ===
+    // 日付抽出
     let extractedDate = null;
     const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
     for (let script of scripts) {
@@ -251,26 +310,21 @@ fetchBtn.addEventListener('click', async () => {
        setTodayDate();
     }
   } catch (err) {
-    alert('URLの読み取りに失敗しました。手動で入力してください。');
+    alert('ページの読み取り中にエラーが発生しました。手動で入力してください。');
   } finally {
     fetchBtn.textContent = "自動抽出";
     fetchBtn.disabled = false;
   }
 });
 
-// ----------------------------------------------------
-// Base64 日本語文字化け対策
-// ----------------------------------------------------
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
-// ----------------------------------------------------
-// 🚀 GitHubへダイレクト公開処理（画像 ＋ HTMLソート＆更新）
-// ----------------------------------------------------
+// 🚀 GitHubへダイレクト公開処理
 publishBtn.addEventListener('click', async () => {
   const token = localStorage.getItem('gh_token');
-  const user = localStorage.getItem('gh_user');
-  const repo = localStorage.getItem('gh_repo');
+  const user = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
+  const repo = localStorage.getItem('gh_repo') || 'liminoid';
 
   if (!token) return alert('設定にトークンを入力してください。');
   if (!targetUrlInput.value) return alert('URLを入力してください。');
@@ -281,7 +335,6 @@ publishBtn.addEventListener('click', async () => {
   publishBtn.classList.add('opacity-50');
   
   try {
-    // 【タスク1】画像のアップロード
     statusMsg.className = "text-sm font-bold text-center text-yellow-400";
     statusMsg.textContent = "🔄 1/2: 画像をアップロード中...";
     
@@ -299,7 +352,6 @@ publishBtn.addEventListener('click', async () => {
     });
     if (!imgPutRes.ok) throw new Error("画像のアップロードに失敗しました");
 
-    // 【タスク2】index.htmlの取得と自動ソート＆書き換え
     statusMsg.textContent = "🔄 2/2: サイト全体を最新順に自動ソート中...";
     const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.html`;
     
@@ -310,7 +362,6 @@ publishBtn.addEventListener('click', async () => {
     const currentHtml = b64_to_utf8(htmlData.content);
     const htmlSha = htmlData.sha;
 
-    // 追加する新しいHTMLカード
     const newCardHtml = `
 <a href="${targetUrlInput.value}" target="_blank" rel="noopener" class="achieve-card">
 <div class="achieve-thumb">
@@ -324,8 +375,6 @@ publishBtn.addEventListener('click', async () => {
 </div>
 </a>`;
 
-    // === 📅 魔法：実績カードの全自動時系列ソート ===
-    // HTMLの中から「実績カードエリア」だけを正確に切り抜く
     const listRegex = /(<section id="achievements"[\s\S]*?<div class="grid sm:grid-cols-2 gap-6">)([\s\S]*?)(<\/div>\s*<\/section>)/;
     const match = currentHtml.match(listRegex);
     if (!match) throw new Error("index.html内に置換用の目印が見つかりません。");
@@ -334,35 +383,28 @@ publishBtn.addEventListener('click', async () => {
     const existingCardsHtml = match[2];
     const suffix = match[3];
 
-    // 切り抜いたエリアに既存のカードと新規カードを全て入れる
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = existingCardsHtml + "\n" + newCardHtml;
 
-    // 全てのカード（aタグ）を配列にして日付でソートする
     const cards = Array.from(tempDiv.querySelectorAll('.achieve-card'));
     cards.sort((a, b) => {
       let dateA = a.querySelector('.achieve-date')?.textContent.trim() || "0000";
       let dateB = b.querySelector('.achieve-date')?.textContent.trim() || "0000";
       
-      // 「2025」のような年だけの表記も「2025.00」として正確に比較する
       dateA = dateA.includes('.') ? dateA : dateA + ".00";
       dateB = dateB.includes('.') ? dateB : dateB + ".00";
       
-      // 降順（新しい順）で並び替え
       return dateB.localeCompare(dateA); 
     });
 
-    // 並び替えたカードを使ってHTMLを再構築
     tempDiv.innerHTML = '';
     cards.forEach(card => {
       tempDiv.appendChild(card);
-      tempDiv.appendChild(document.createTextNode("\n\n")); // コードの改行を綺麗に保つ
+      tempDiv.appendChild(document.createTextNode("\n\n"));
     });
 
-    // 元のHTMLの該当部分を、ソート完了済みのHTMLに丸ごと置き換える
     const updatedHtml = currentHtml.replace(listRegex, prefix + "\n\n" + tempDiv.innerHTML + suffix);
 
-    // 綺麗にソートされたHTMLを保存
     const htmlPutRes = await fetch(htmlUrl, {
       method: "PUT",
       headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
@@ -376,7 +418,7 @@ publishBtn.addEventListener('click', async () => {
     if (!htmlPutRes.ok) throw new Error("index.htmlの保存に失敗しました");
 
     statusMsg.className = "text-sm font-bold text-center text-green-400";
-    statusMsg.textContent = `✅ 完全勝利！過去のカードを含めすべて時系列に自動整列して公開されました。`;
+    statusMsg.textContent = `✅ 完全成功！画像と実績が時系列順に公開されました。`;
     
   } catch (err) {
     statusMsg.className = "text-sm font-bold text-center text-red-400";
