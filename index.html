@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio</title>
+<title>Liminoid Banner Studio v3</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6">
+<body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6 py-10">
 
-<div class="max-w-xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
-  <h1 class="text-xl font-bold mb-1 text-center">16:9 透過バナー自動公開スタジオ</h1>
-  <p class="text-xs text-neutral-400 text-center mb-6">画像生成からLiminoidサイトへの本番反映までを完結します</p>
+<div class="max-w-2xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
+  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v3</h1>
+  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ 自動スクレイピング ＋ HTML自動更新</p>
 
-  <!-- GitHub設定（初回のみ） -->
+  <!-- GitHub設定 -->
   <details class="mb-6 bg-neutral-900/50 border border-neutral-700 rounded-xl p-4 text-xs">
-    <summary class="cursor-pointer font-bold text-neutral-300 hover:text-white">⚙️ GitHub連携設定（最初に1回だけ入力）</summary>
+    <summary class="cursor-pointer font-bold text-neutral-300 hover:text-white">⚙️ GitHub連携設定（初回のみ）</summary>
     <div class="mt-3 flex flex-col gap-3">
       <div>
         <label class="block text-neutral-400 mb-1">GitHub Personal Access Token:</label>
-        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-white">
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div>
@@ -34,43 +34,79 @@
     </div>
   </details>
 
-  <!-- ファイルドロップエリア -->
-  <div id="drop-zone" class="border-2 border-dashed border-neutral-600 rounded-xl p-8 text-center cursor-pointer hover:border-red-500 transition-colors mb-6">
-    <p class="text-sm text-neutral-300">ここに画像をドラッグ＆ドロップ<br><span class="text-xs text-neutral-500">またはクリックして選択</span></p>
-    <input type="file" id="file-input" accept="image/*" class="hidden">
+  <!-- ステップ1：画像ドロップ -->
+  <div class="mb-6">
+    <p class="text-sm font-bold mb-2">① 画像を準備する</p>
+    <div id="drop-zone" class="border-2 border-dashed border-neutral-600 rounded-xl p-6 text-center cursor-pointer hover:border-red-500 transition-colors">
+      <p class="text-sm text-neutral-300">ここに画像をドラッグ＆ドロップ</p>
+      <input type="file" id="file-input" accept="image/*" class="hidden">
+    </div>
   </div>
 
-  <!-- プレビューと操作エリア -->
-  <div id="result-area" class="hidden flex-col items-center gap-4">
-    <div class="w-full aspect-[16/9] bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px] border border-neutral-700 rounded-lg overflow-hidden flex items-center justify-center">
-      <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
+  <!-- プレビューと情報入力エリア（初期は非表示） -->
+  <div id="editor-area" class="hidden flex-col gap-6">
+    
+    <!-- ステップ2：URL入力と自動抽出 -->
+    <div class="bg-neutral-900/50 p-4 rounded-xl border border-neutral-700">
+      <p class="text-sm font-bold mb-3">② リンク先URLとテキスト設定</p>
+      <div class="flex gap-2 mb-4">
+        <input type="url" id="target-url" placeholder="https://..." class="flex-1 bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
+        <button id="fetch-btn" class="bg-neutral-700 hover:bg-neutral-600 px-4 py-2 rounded text-sm font-bold transition-colors whitespace-nowrap">自動抽出</button>
+      </div>
+      
+      <div class="flex flex-col gap-3">
+        <div class="flex gap-3">
+          <div class="w-1/4">
+            <label class="block text-xs text-neutral-400 mb-1">年月（自動/手動）</label>
+            <input type="text" id="card-date" placeholder="2026.08" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-display">
+          </div>
+          <div class="w-3/4">
+            <label class="block text-xs text-neutral-400 mb-1">タイトル（実績カードの見出し）</label>
+            <input type="text" id="card-title" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-neutral-400 mb-1">説明文（1〜2行程度）</label>
+          <textarea id="card-desc" rows="2" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- プレビュー画像 -->
+    <div>
+      <p class="text-sm font-bold mb-2">③ 生成画像プレビュー</p>
+      <div class="w-full aspect-[16/9] bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px] border border-neutral-700 rounded-lg overflow-hidden flex items-center justify-center">
+        <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
+      </div>
     </div>
 
     <!-- アクションボタン -->
-    <div class="w-full flex flex-col gap-2">
-      <button id="publish-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm flex items-center justify-center gap-2">
-        🚀 Liminoid サイトに直接公開（GitHubへ送信）
+    <div class="w-full flex flex-col gap-2 mt-2">
+      <button id="publish-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors cursor-pointer text-base shadow-lg">
+        🚀 画像 ＋ テキストをサイトに直接公開（HTML自動更新）
       </button>
-      <a id="download-btn" class="w-full text-center bg-neutral-700 hover:bg-neutral-600 text-neutral-300 py-2 rounded-xl transition-colors cursor-pointer text-xs">
-        PCに画像だけダウンロード（バックアップ用）
-      </a>
     </div>
     
-    <!-- ステータス表示 -->
-    <p id="status-msg" class="text-xs font-bold text-center mt-1"></p>
+    <p id="status-msg" class="text-sm font-bold text-center mt-2"></p>
   </div>
 </div>
 
 <script>
+// UI要素
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const resultArea = document.getElementById('result-area');
+const editorArea = document.getElementById('editor-area');
+const targetUrlInput = document.getElementById('target-url');
+const fetchBtn = document.getElementById('fetch-btn');
+const cardDateInput = document.getElementById('card-date');
+const cardTitleInput = document.getElementById('card-title');
+const cardDescInput = document.getElementById('card-desc');
 const publishBtn = document.getElementById('publish-btn');
-const downloadBtn = document.getElementById('download-btn');
 const statusMsg = document.getElementById('status-msg');
 
+// 設定関連
 const ghTokenInput = document.getElementById('gh-token');
 const ghUserInput = document.getElementById('gh-user');
 const ghRepoInput = document.getElementById('gh-repo');
@@ -78,7 +114,16 @@ const saveSettingsBtn = document.getElementById('save-settings');
 
 let currentFileName = "";
 
-// 設定の読み込み
+// 今日の日付をセットする関数
+function setTodayDate() {
+  const now = new Date();
+  cardDateInput.value = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+setTodayDate();
+
+// ----------------------------------------------------
+// 初期設定読み込み
+// ----------------------------------------------------
 ghTokenInput.value = localStorage.getItem('gh_token') || '';
 ghUserInput.value = localStorage.getItem('gh_user') || 'matsuzakiyuta';
 ghRepoInput.value = localStorage.getItem('gh_repo') || 'Liminoid';
@@ -93,6 +138,9 @@ saveSettingsBtn.addEventListener('click', () => {
 canvas.width = 1920;
 canvas.height = 1080;
 
+// ----------------------------------------------------
+// 画像ドロップ処理
+// ----------------------------------------------------
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-red-500'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-500'));
@@ -123,70 +171,195 @@ function processImage(file) {
       const posY = (1080 - newH) / 2;
 
       ctx.drawImage(img, posX, posY, newW, newH);
-
-      downloadBtn.href = canvas.toDataURL('image/png');
-      downloadBtn.download = currentFileName;
-      resultArea.classList.remove('hidden');
-      resultArea.classList.add('flex');
+      
+      editorArea.classList.remove('hidden');
+      editorArea.classList.add('flex');
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// GitHubへダイレクト公開処理
+// ----------------------------------------------------
+// URLから情報を自動抽出（CORS回避プロキシを使用）
+// ----------------------------------------------------
+fetchBtn.addEventListener('click', async () => {
+  const url = targetUrlInput.value.trim();
+  if (!url) return alert('URLを入力してください');
+  
+  fetchBtn.textContent = "取得中...";
+  fetchBtn.disabled = true;
+
+  try {
+    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    const data = await res.json();
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data.contents, "text/html");
+    
+    let title = doc.querySelector('meta[property="og:title"]')?.content || doc.title || "";
+    let desc = doc.querySelector('meta[property="og:description"]')?.content || doc.querySelector('meta[name="description"]')?.content || "";
+
+    // === 📅 日付の自動抽出ロジック ===
+    let extractedDate = null;
+
+    // 1. 構造化データ（Schema.org）から探す
+    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (let script of scripts) {
+      try {
+        const jsonData = JSON.parse(script.textContent);
+        const check = (obj) => obj.startDate || obj.datePublished || obj.uploadDate || null;
+        if (Array.isArray(jsonData)) {
+          for (let item of jsonData) { extractedDate = check(item); if (extractedDate) break; }
+        } else {
+          extractedDate = check(jsonData);
+          if (!extractedDate && jsonData['@graph']) {
+            for (let item of jsonData['@graph']) { extractedDate = check(item); if (extractedDate) break; }
+          }
+        }
+      } catch(e) {}
+      if (extractedDate) break;
+    }
+
+    // 2. メタタグから探す
+    if (!extractedDate) {
+      const metaDate = doc.querySelector('meta[property="article:published_time"], meta[property="event:start_time"], meta[name="date"], meta[name="pubdate"]');
+      if (metaDate) extractedDate = metaDate.content;
+    }
+
+    // 3. timeタグから探す
+    if (!extractedDate) {
+      const timeTag = doc.querySelector('time[datetime]');
+      if (timeTag) extractedDate = timeTag.getAttribute('datetime');
+    }
+
+    // 4. 本文の「開催」などの文字の近くから日本の日付（202x年x月）を探す
+    let parsedFormattedDate = null;
+    if (!extractedDate) {
+       const bodyText = doc.body.innerText || "";
+       const regex = /(?:開催|実施|公開|配信|日時|期間)[^\d]*?(202\d)[年/.-](\d{1,2})[月/.-]?/i;
+       const match = bodyText.match(regex);
+       if (match) {
+          parsedFormattedDate = `${match[1]}.${match[2].padStart(2, '0')}`;
+       }
+    }
+
+    // フォーマット変換 (YYYY.MM)
+    if (!parsedFormattedDate && extractedDate) {
+       const d = new Date(extractedDate);
+       if (!isNaN(d.getTime())) {
+          parsedFormattedDate = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+       }
+    }
+
+    // フォームに反映
+    cardTitleInput.value = title;
+    cardDescInput.value = desc;
+    if (parsedFormattedDate) {
+       cardDateInput.value = parsedFormattedDate;
+    } else {
+       // 見つからなければ今日の年月をセット
+       setTodayDate();
+    }
+  } catch (err) {
+    alert('URLの読み取りに失敗しました。手動で入力してください。');
+  } finally {
+    fetchBtn.textContent = "自動抽出";
+    fetchBtn.disabled = false;
+  }
+});
+
+// ----------------------------------------------------
+// Base64 日本語文字化け対策関数
+// ----------------------------------------------------
+function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
+function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
+
+// ----------------------------------------------------
+// 🚀 GitHubへダイレクト公開処理（画像 ＋ HTML更新）
+// ----------------------------------------------------
 publishBtn.addEventListener('click', async () => {
   const token = localStorage.getItem('gh_token');
   const user = localStorage.getItem('gh_user');
   const repo = localStorage.getItem('gh_repo');
 
-  if (!token) {
-    alert('「GitHub連携設定」を開いて、Personal Access Token を入力・保存してください。');
-    return;
-  }
+  if (!token) return alert('設定にトークンを入力してください。');
+  if (!targetUrlInput.value) return alert('URLを入力してください。');
+  if (!cardTitleInput.value) return alert('タイトルを入力してください。');
+  if (!cardDateInput.value) return alert('年月を入力してください。');
 
   publishBtn.disabled = true;
   publishBtn.classList.add('opacity-50');
-  statusMsg.className = "text-xs font-bold text-center text-yellow-400";
-  statusMsg.textContent = "🔄 GitHubへ送信中...";
-
+  
   try {
-    const base64Data = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
-    const url = `https://api.github.com/repos/${user}/${repo}/contents/${currentFileName}`;
+    // 【タスク1】画像のアップロード
+    statusMsg.className = "text-sm font-bold text-center text-yellow-400";
+    statusMsg.textContent = "🔄 1/2: 画像をアップロード中...";
     
-    // 既存ファイルのSHAを取得（上書き対応）
-    let sha = null;
-    const getRes = await fetch(url, {
-      headers: { "Authorization": `token ${token}` }
-    });
-    if (getRes.ok) {
-      const getData = await getRes.json();
-      sha = getData.sha;
-    }
+    const base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
+    const imgUrl = `https://api.github.com/repos/${user}/${repo}/contents/${currentFileName}`;
+    
+    let imgSha = null;
+    const imgGetRes = await fetch(imgUrl, { headers: { "Authorization": `token ${token}` } });
+    if (imgGetRes.ok) imgSha = (await imgGetRes.json()).sha;
 
-    // アップロードリクエスト
-    const putRes = await fetch(url, {
+    const imgPutRes = await fetch(imgUrl, {
       method: "PUT",
-      headers: {
-        "Authorization": `token ${token}`,
-        "Content-Type": "application/json"
-      },
+      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: `Add banner: ${currentFileName}`, content: base64Img, sha: imgSha || undefined })
+    });
+    if (!imgPutRes.ok) throw new Error("画像のアップロードに失敗しました");
+
+    // 【タスク2】index.htmlの取得と書き換え
+    statusMsg.textContent = "🔄 2/2: サイト(HTML)を自動更新中...";
+    const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.html`;
+    
+    const htmlGetRes = await fetch(htmlUrl, { headers: { "Authorization": `token ${token}` } });
+    if (!htmlGetRes.ok) throw new Error("index.htmlの取得に失敗しました");
+    
+    const htmlData = await htmlGetRes.json();
+    const currentHtml = b64_to_utf8(htmlData.content);
+    const htmlSha = htmlData.sha;
+
+    // 追記する新しいHTMLブロック（入力された年月を使用）
+    const newCardHtml = `
+<a href="${targetUrlInput.value}" target="_blank" rel="noopener" class="achieve-card">
+<div class="achieve-thumb">
+<span class="achieve-date">${cardDateInput.value}</span>
+<img src="${currentFileName}" alt="${cardTitleInput.value}" onerror="this.style.display='none'">
+<span class="achieve-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+</div>
+<div class="p-5">
+<h3 class="font-display text-base tracking-wide-jp mb-1.5">${cardTitleInput.value}</h3>
+<p class="text-sm text-[var(--ink-dim)] leading-relaxed">${cardDescInput.value}</p>
+</div>
+</a>`;
+
+    // 置換処理（実績リストの目印を探して、その直後に挿入）
+    const targetMarker = '<div class="grid sm:grid-cols-2 gap-6">';
+    if (!currentHtml.includes(targetMarker)) throw new Error("index.html内に置換用の目印が見つかりません。");
+    
+    const updatedHtml = currentHtml.replace(targetMarker, targetMarker + "\n" + newCardHtml);
+
+    // 更新されたHTMLを保存
+    const htmlPutRes = await fetch(htmlUrl, {
+      method: "PUT",
+      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: `Auto publish banner: ${currentFileName}`,
-        content: base64Data,
-        sha: sha || undefined
+        message: `Add new achievement: ${cardTitleInput.value}`,
+        content: utf8_to_b64(updatedHtml),
+        sha: htmlSha
       })
     });
+    
+    if (!htmlPutRes.ok) throw new Error("index.htmlの保存に失敗しました");
 
-    if (putRes.ok) {
-      statusMsg.className = "text-xs font-bold text-center text-green-400";
-      statusMsg.textContent = `✅ 公開成功！ 『${currentFileName}』 がLiminoidサイトにアップロードされました。`;
-    } else {
-      const errData = await putRes.json();
-      throw new Error(errData.message || "送信エラー");
-    }
+    statusMsg.className = "text-sm font-bold text-center text-green-400";
+    statusMsg.textContent = `✅ 完了！画像と実績がサイトに追加されました。（約10〜30秒でNetlifyに反映されます）`;
+    
   } catch (err) {
-    statusMsg.className = "text-xs font-bold text-center text-red-400";
+    statusMsg.className = "text-sm font-bold text-center text-red-400";
     statusMsg.textContent = `❌ エラー: ${err.message}`;
   } finally {
     publishBtn.disabled = false;
