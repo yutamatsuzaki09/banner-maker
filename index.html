@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio v3</title>
+<title>Liminoid Banner Studio v4</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6 py-10">
 
 <div class="max-w-2xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
-  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v3</h1>
-  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ 自動スクレイピング ＋ HTML自動更新</p>
+  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v4</h1>
+  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ スクレイピング ＋ HTML自動ソート＆更新</p>
 
   <!-- GitHub設定 -->
   <details class="mb-6 bg-neutral-900/50 border border-neutral-700 rounded-xl p-4 text-xs">
@@ -83,7 +83,7 @@
     <!-- アクションボタン -->
     <div class="w-full flex flex-col gap-2 mt-2">
       <button id="publish-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors cursor-pointer text-base shadow-lg">
-        🚀 画像 ＋ テキストをサイトに直接公開（HTML自動更新）
+        🚀 画像＋テキストをサイトに公開（時系列順に自動ソート）
       </button>
     </div>
     
@@ -181,7 +181,7 @@ function processImage(file) {
 }
 
 // ----------------------------------------------------
-// URLから情報を自動抽出（CORS回避プロキシを使用）
+// URLから情報を自動抽出
 // ----------------------------------------------------
 fetchBtn.addEventListener('click', async () => {
   const url = targetUrlInput.value.trim();
@@ -203,8 +203,6 @@ fetchBtn.addEventListener('click', async () => {
 
     // === 📅 日付の自動抽出ロジック ===
     let extractedDate = null;
-
-    // 1. 構造化データ（Schema.org）から探す
     const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
     for (let script of scripts) {
       try {
@@ -222,44 +220,34 @@ fetchBtn.addEventListener('click', async () => {
       if (extractedDate) break;
     }
 
-    // 2. メタタグから探す
     if (!extractedDate) {
       const metaDate = doc.querySelector('meta[property="article:published_time"], meta[property="event:start_time"], meta[name="date"], meta[name="pubdate"]');
       if (metaDate) extractedDate = metaDate.content;
     }
 
-    // 3. timeタグから探す
     if (!extractedDate) {
       const timeTag = doc.querySelector('time[datetime]');
       if (timeTag) extractedDate = timeTag.getAttribute('datetime');
     }
 
-    // 4. 本文の「開催」などの文字の近くから日本の日付（202x年x月）を探す
     let parsedFormattedDate = null;
     if (!extractedDate) {
        const bodyText = doc.body.innerText || "";
        const regex = /(?:開催|実施|公開|配信|日時|期間)[^\d]*?(202\d)[年/.-](\d{1,2})[月/.-]?/i;
        const match = bodyText.match(regex);
-       if (match) {
-          parsedFormattedDate = `${match[1]}.${match[2].padStart(2, '0')}`;
-       }
+       if (match) parsedFormattedDate = `${match[1]}.${match[2].padStart(2, '0')}`;
     }
 
-    // フォーマット変換 (YYYY.MM)
     if (!parsedFormattedDate && extractedDate) {
        const d = new Date(extractedDate);
-       if (!isNaN(d.getTime())) {
-          parsedFormattedDate = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-       }
+       if (!isNaN(d.getTime())) parsedFormattedDate = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
 
-    // フォームに反映
     cardTitleInput.value = title;
     cardDescInput.value = desc;
     if (parsedFormattedDate) {
        cardDateInput.value = parsedFormattedDate;
     } else {
-       // 見つからなければ今日の年月をセット
        setTodayDate();
     }
   } catch (err) {
@@ -271,13 +259,13 @@ fetchBtn.addEventListener('click', async () => {
 });
 
 // ----------------------------------------------------
-// Base64 日本語文字化け対策関数
+// Base64 日本語文字化け対策
 // ----------------------------------------------------
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
 // ----------------------------------------------------
-// 🚀 GitHubへダイレクト公開処理（画像 ＋ HTML更新）
+// 🚀 GitHubへダイレクト公開処理（画像 ＋ HTMLソート＆更新）
 // ----------------------------------------------------
 publishBtn.addEventListener('click', async () => {
   const token = localStorage.getItem('gh_token');
@@ -311,8 +299,8 @@ publishBtn.addEventListener('click', async () => {
     });
     if (!imgPutRes.ok) throw new Error("画像のアップロードに失敗しました");
 
-    // 【タスク2】index.htmlの取得と書き換え
-    statusMsg.textContent = "🔄 2/2: サイト(HTML)を自動更新中...";
+    // 【タスク2】index.htmlの取得と自動ソート＆書き換え
+    statusMsg.textContent = "🔄 2/2: サイト全体を最新順に自動ソート中...";
     const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.html`;
     
     const htmlGetRes = await fetch(htmlUrl, { headers: { "Authorization": `token ${token}` } });
@@ -322,7 +310,7 @@ publishBtn.addEventListener('click', async () => {
     const currentHtml = b64_to_utf8(htmlData.content);
     const htmlSha = htmlData.sha;
 
-    // 追記する新しいHTMLブロック（入力された年月を使用）
+    // 追加する新しいHTMLカード
     const newCardHtml = `
 <a href="${targetUrlInput.value}" target="_blank" rel="noopener" class="achieve-card">
 <div class="achieve-thumb">
@@ -336,18 +324,50 @@ publishBtn.addEventListener('click', async () => {
 </div>
 </a>`;
 
-    // 置換処理（実績リストの目印を探して、その直後に挿入）
-    const targetMarker = '<div class="grid sm:grid-cols-2 gap-6">';
-    if (!currentHtml.includes(targetMarker)) throw new Error("index.html内に置換用の目印が見つかりません。");
-    
-    const updatedHtml = currentHtml.replace(targetMarker, targetMarker + "\n" + newCardHtml);
+    // === 📅 魔法：実績カードの全自動時系列ソート ===
+    // HTMLの中から「実績カードエリア」だけを正確に切り抜く
+    const listRegex = /(<section id="achievements"[\s\S]*?<div class="grid sm:grid-cols-2 gap-6">)([\s\S]*?)(<\/div>\s*<\/section>)/;
+    const match = currentHtml.match(listRegex);
+    if (!match) throw new Error("index.html内に置換用の目印が見つかりません。");
 
-    // 更新されたHTMLを保存
+    const prefix = match[1];
+    const existingCardsHtml = match[2];
+    const suffix = match[3];
+
+    // 切り抜いたエリアに既存のカードと新規カードを全て入れる
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = existingCardsHtml + "\n" + newCardHtml;
+
+    // 全てのカード（aタグ）を配列にして日付でソートする
+    const cards = Array.from(tempDiv.querySelectorAll('.achieve-card'));
+    cards.sort((a, b) => {
+      let dateA = a.querySelector('.achieve-date')?.textContent.trim() || "0000";
+      let dateB = b.querySelector('.achieve-date')?.textContent.trim() || "0000";
+      
+      // 「2025」のような年だけの表記も「2025.00」として正確に比較する
+      dateA = dateA.includes('.') ? dateA : dateA + ".00";
+      dateB = dateB.includes('.') ? dateB : dateB + ".00";
+      
+      // 降順（新しい順）で並び替え
+      return dateB.localeCompare(dateA); 
+    });
+
+    // 並び替えたカードを使ってHTMLを再構築
+    tempDiv.innerHTML = '';
+    cards.forEach(card => {
+      tempDiv.appendChild(card);
+      tempDiv.appendChild(document.createTextNode("\n\n")); // コードの改行を綺麗に保つ
+    });
+
+    // 元のHTMLの該当部分を、ソート完了済みのHTMLに丸ごと置き換える
+    const updatedHtml = currentHtml.replace(listRegex, prefix + "\n\n" + tempDiv.innerHTML + suffix);
+
+    // 綺麗にソートされたHTMLを保存
     const htmlPutRes = await fetch(htmlUrl, {
       method: "PUT",
       headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: `Add new achievement: ${cardTitleInput.value}`,
+        message: `Add new achievement & auto-sort: ${cardTitleInput.value}`,
         content: utf8_to_b64(updatedHtml),
         sha: htmlSha
       })
@@ -356,7 +376,7 @@ publishBtn.addEventListener('click', async () => {
     if (!htmlPutRes.ok) throw new Error("index.htmlの保存に失敗しました");
 
     statusMsg.className = "text-sm font-bold text-center text-green-400";
-    statusMsg.textContent = `✅ 完了！画像と実績がサイトに追加されました。（約10〜30秒でNetlifyに反映されます）`;
+    statusMsg.textContent = `✅ 完全勝利！過去のカードを含めすべて時系列に自動整列して公開されました。`;
     
   } catch (err) {
     statusMsg.className = "text-sm font-bold text-center text-red-400";
