@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio v5</title>
+<title>Liminoid Banner Studio v6</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6 py-10">
 
 <div class="max-w-2xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
-  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v5</h1>
+  <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v6</h1>
   <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ 自動スクレイピング ＋ HTML自動ソート＆更新</p>
 
   <!-- GitHub設定 -->
@@ -131,9 +131,10 @@ function setTodayDate() {
   const now = new Date();
   cardDateInput.value = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
-setTodayDate();
 
-// 初期設定読み込み
+// ----------------------------------------------------
+// 初期設定 & ブックマークレットからの受取処理
+// ----------------------------------------------------
 ghTokenInput.value = localStorage.getItem('gh_token') || '';
 ghUserInput.value = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
 ghRepoInput.value = localStorage.getItem('gh_repo') || 'liminoid';
@@ -147,6 +148,26 @@ saveSettingsBtn.addEventListener('click', () => {
 
 canvas.width = 1920;
 canvas.height = 1080;
+
+// ★ ブックマークレットからデータが届いているか判定して受取
+window.addEventListener('load', () => {
+  setTodayDate();
+  
+  const params = new URLSearchParams(window.location.search);
+  const urlParam = params.get('url');
+  const titleParam = params.get('title');
+  const descParam = params.get('desc');
+
+  if (urlParam || titleParam || descParam) {
+    if (urlParam) targetUrlInput.value = urlParam;
+    if (titleParam) cardTitleInput.value = titleParam;
+    if (descParam) cardDescInput.value = descParam;
+
+    // 入力エリアを自動で開く
+    editorArea.classList.remove('hidden');
+    editorArea.classList.add('flex');
+  }
+});
 
 // キャンバス描画処理
 function renderCanvas() {
@@ -215,7 +236,7 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
-// URLから情報を自動抽出（複数プロキシ試行）
+// URLからの手動自動抽出ボタン
 fetchBtn.addEventListener('click', async () => {
   const url = targetUrlInput.value.trim();
   if (!url) return alert('URLを入力してください');
@@ -225,7 +246,6 @@ fetchBtn.addEventListener('click', async () => {
 
   let htmlContent = "";
 
-  // 1. Allorigins プロキシ
   try {
     const proxyUrl1 = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
     const res = await fetch(proxyUrl1);
@@ -235,19 +255,16 @@ fetchBtn.addEventListener('click', async () => {
     }
   } catch(e) {}
 
-  // 2. Codetabs プロキシ (フォールバック)
   if (!htmlContent) {
     try {
       const proxyUrl2 = "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url);
       const res = await fetch(proxyUrl2);
-      if (res.ok) {
-        htmlContent = await res.text();
-      }
+      if (res.ok) htmlContent = await res.text();
     } catch(e) {}
   }
 
   if (!htmlContent) {
-    alert('対象サイトのセキュリティ制限により自動抽出できませんでした。タイトルと説明文は手動で入力してください（※画像公開はそのまま行えます）。');
+    alert('対象サイトのセキュリティ制限により自動抽出できませんでした。ブックマークレットを利用するか、手動で入力してください。');
     fetchBtn.textContent = "自動抽出";
     fetchBtn.disabled = false;
     return;
@@ -260,55 +277,8 @@ fetchBtn.addEventListener('click', async () => {
     let title = doc.querySelector('meta[property="og:title"]')?.content || doc.title || "";
     let desc = doc.querySelector('meta[property="og:description"]')?.content || doc.querySelector('meta[name="description"]')?.content || "";
 
-    // 日付抽出
-    let extractedDate = null;
-    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
-    for (let script of scripts) {
-      try {
-        const jsonData = JSON.parse(script.textContent);
-        const check = (obj) => obj.startDate || obj.datePublished || obj.uploadDate || null;
-        if (Array.isArray(jsonData)) {
-          for (let item of jsonData) { extractedDate = check(item); if (extractedDate) break; }
-        } else {
-          extractedDate = check(jsonData);
-          if (!extractedDate && jsonData['@graph']) {
-            for (let item of jsonData['@graph']) { extractedDate = check(item); if (extractedDate) break; }
-          }
-        }
-      } catch(e) {}
-      if (extractedDate) break;
-    }
-
-    if (!extractedDate) {
-      const metaDate = doc.querySelector('meta[property="article:published_time"], meta[property="event:start_time"], meta[name="date"], meta[name="pubdate"]');
-      if (metaDate) extractedDate = metaDate.content;
-    }
-
-    if (!extractedDate) {
-      const timeTag = doc.querySelector('time[datetime]');
-      if (timeTag) extractedDate = timeTag.getAttribute('datetime');
-    }
-
-    let parsedFormattedDate = null;
-    if (!extractedDate) {
-       const bodyText = doc.body.innerText || "";
-       const regex = /(?:開催|実施|公開|配信|日時|期間)[^\d]*?(202\d)[年/.-](\d{1,2})[月/.-]?/i;
-       const match = bodyText.match(regex);
-       if (match) parsedFormattedDate = `${match[1]}.${match[2].padStart(2, '0')}`;
-    }
-
-    if (!parsedFormattedDate && extractedDate) {
-       const d = new Date(extractedDate);
-       if (!isNaN(d.getTime())) parsedFormattedDate = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }
-
     cardTitleInput.value = title;
     cardDescInput.value = desc;
-    if (parsedFormattedDate) {
-       cardDateInput.value = parsedFormattedDate;
-    } else {
-       setTodayDate();
-    }
   } catch (err) {
     alert('ページの読み取り中にエラーが発生しました。手動で入力してください。');
   } finally {
