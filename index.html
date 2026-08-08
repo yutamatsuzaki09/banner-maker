@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liminoid Banner Maker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6">
+
+<div class="max-w-xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
+  <h1 class="text-xl font-bold mb-2 text-center">16:9 透過バナー生成ツール</h1>
+  <p class="text-xs text-neutral-400 text-center mb-6">※画像はサーバーに送信されず、すべてブラウザ内で安全に処理されます。</p>
+
+  <!-- ファイルドロップエリア -->
+  <div id="drop-zone" class="border-2 border-dashed border-neutral-600 rounded-xl p-8 text-center cursor-pointer hover:border-red-500 transition-colors mb-6">
+    <p class="text-sm text-neutral-300">ここに画像をドラッグ＆ドロップ<br>またはクリックして選択</p>
+    <input type="file" id="file-input" accept="image/*" class="hidden">
+  </div>
+
+  <!-- プレビューとダウンロードボタン -->
+  <div id="result-area" class="hidden flex-col items-center gap-4">
+    <p class="text-xs text-neutral-400">生成プレビュー (1920×1080)</p>
+    <div class="w-full aspect-[16/9] bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px] border border-neutral-700 rounded-lg overflow-hidden flex items-center justify-center">
+      <canvas id="canvas" class="max-w-full max-h-full object-contain"></canvas>
+    </div>
+    <a id="download-btn" class="w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm">
+      バナー（PNG）をダウンロード
+    </a>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const resultArea = document.getElementById('result-area');
+const downloadBtn = document.getElementById('download-btn');
+
+canvas.width = 1920;
+canvas.height = 1080;
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-red-500'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-500'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('border-red-500');
+  if (e.dataTransfer.files.length) processImage(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) processImage(e.target.files[0]);
+});
+
+function processImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // 1. キャンバスをクリア（完全透明）
+      ctx.clearRect(0, 0, 1920, 1080);
+
+      // 2. 80%以内に収まるようリサイズ計算
+      const maxW = 1920 * 0.8;
+      const maxH = 1080 * 0.8;
+      const ratio = Math.min(maxW / img.width, maxH / img.height);
+      const newW = img.width * ratio;
+      const newH = img.height * ratio;
+
+      // 3. 中央配置
+      const posX = (1920 - newW) / 2;
+      const posY = (1080 - newH) / 2;
+
+      ctx.drawImage(img, posX, posY, newW, newH);
+
+      // 4. ダウンロードリンク生成
+      const name = file.name.replace(/\.[^/.]+$/, "");
+      downloadBtn.href = canvas.toDataURL('image/png');
+      downloadBtn.download = `banner_${name}.png`;
+      resultArea.classList.remove('hidden');
+      resultArea.classList.add('flex');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+</body>
+</html>
