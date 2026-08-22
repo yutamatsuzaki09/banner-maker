@@ -43,7 +43,7 @@
       <span class="w-3.5 h-3.5 bg-red-600 rounded-full inline-block animate-pulse"></span>
       <div>
         <h1 class="text-xl font-bold tracking-tight text-white">Liminoid Banner Studio v9</h1>
-        <p class="text-xs text-zinc-400 mt-0.5">AI連携（ChatGPT / Claude）＆ profile.html 自動更新ツール</p>
+        <p class="text-xs text-zinc-400 mt-0.5">AI連携（文脈補強プロンプト）＆ profile.html 自動更新ツール</p>
       </div>
     </div>
     
@@ -90,21 +90,21 @@
           <span>📋 ChatGPT用指示文をコピー</span>
         </button>
       </div>
-      <p id="prompt-copy-msg" class="text-[11px] text-zinc-400 pl-1">※URLを入力してボタンを押すと、ChatGPT等にそのまま貼れるプロンプトがコピーされます。</p>
+      <p id="prompt-copy-msg" class="text-[11px] text-zinc-400 pl-1">※URLを入力してボタンを押すと、背景文脈入りの指示文がコピーされます。ChatGPT等にそのまま貼り付けてください。</p>
     </div>
 
     <!-- 1-B：AI回答の貼り付けエリア -->
     <div class="bg-zinc-950 p-5 rounded-xl border border-red-900/50 space-y-3">
       <div class="flex items-center gap-2">
         <span class="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-xs flex items-center justify-center">2</span>
-        <h2 class="text-sm font-bold text-white">AI（ChatGPT/Claude）の回答（JSON）をここに貼り付け</h2>
+        <h2 class="text-sm font-bold text-white">AI（ChatGPT/Claude）が出力したJSONをここに貼り付け</h2>
       </div>
       
       <textarea id="ai-json-input" rows="3" placeholder='AIが出力した {"date": "2026.08", "title": ...} をここに貼り付けると全自動セットされます' class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-red-600"></textarea>
       
       <!-- 手動画像ドロップ補足 -->
       <details class="text-xs text-zinc-400">
-        <summary class="cursor-pointer hover:text-white">📁 AI画像ではなく、手動で独自画像をアップロードしたい場合</summary>
+        <summary class="cursor-pointer hover:text-white">📁 AI画像ではなく、独自画像をアップロードしたい場合</summary>
         <div id="drop-zone" class="mt-3 border-2 border-dashed border-zinc-800 hover:border-red-600 bg-zinc-900 rounded-xl p-4 text-center cursor-pointer">
           <p class="text-xs text-zinc-300">画像をここにドロップ（またはクリックして選択）</p>
           <input type="file" id="file-input" accept="image/*" class="hidden">
@@ -266,21 +266,24 @@ function updateCardPreview() {
   input.addEventListener('input', updateCardPreview);
 });
 
-// 📋 AIプロンプトの自動生成 ＆ コピー機能
+// 📋 文脈強化版 AIプロンプトの自動生成 ＆ コピー機能
 copyPromptBtn.addEventListener('click', () => {
   const url = targetUrlInput.value.trim() || "[対象ページのURL]";
-  const promptText = `以下のWebページ（または画像）を解析し、Liminoid Webサイト実績掲載用のJSONを出力してください。
+  const promptText = `あなたはビジネスコンサルタントのパートナー「Liminoid（代表：松崎雄汰）」のWeb広報担当です。
+Liminoidは、事業創出・成長のパートナーとして、個人事業主や事業者のさまざまな課題を解決に導く手助け・伴走支援をおこなっています。（実績・プロフィール詳細: https://liminoid.net/ / https://liminoid.net/profile.html）
 
-対象URL: ${url}
+以下のWebページ（または画像）を解析し、Liminoidの公式プロフィールページに掲載する「登壇・活動実績」用のJSONを出力してください。
 
-【出力要件】
-・純粋なJSONオブジェクトのみを出力してください（解説テキスト不要）。
-・日付（date）はページの公開年月（例: 2026.08）。
-・タイトル（title）はイベント名や記事題名（簡潔に）。
-・説明文（desc）は成果や登壇内容の1〜2行の要約。
-・画像URL（imageUrl）はページのメインアイキャッチ/OGP画像URL。
+対象URL / 情報: ${url}
 
-【出力フォーマット例】
+【出力ルール】
+・純粋なJSONオブジェクトのみを出力してください（説明・解説テキストは一切不要）。
+・date: 該当イベントや記事の公開年月（例: 2026.08）。不明な場合は現在の年月。
+・title: イベント名や取材題目（15〜25文字程度で簡潔に）。
+・desc: 松崎氏の登壇内容や取材テーマを、松崎氏の実績・伴走支援の成果として魅力が伝わるよう1〜2行（40〜60文字程度）で要約。
+・imageUrl: 記事・ページのメインアイキャッチ/OGP画像のURL。
+
+【出力フォーマット】
 {
   "date": "2026.08",
   "title": "タイトルテキスト",
@@ -290,7 +293,7 @@ copyPromptBtn.addEventListener('click', () => {
 
   navigator.clipboard.writeText(promptText).then(() => {
     promptCopyMsg.className = "text-[11px] text-green-400 font-bold pl-1";
-    promptCopyMsg.textContent = "✅ プロンプトをクリップボードにコピーしました！ChatGPT / Claude 等に貼り付けてください。";
+    promptCopyMsg.textContent = "✅ 文脈入り指示文をコピーしました！ChatGPT / Claude 等に貼り付けて送信してください。";
   }).catch(() => {
     alert("コピーに失敗しました。手動でコピーしてください。");
   });
@@ -348,7 +351,6 @@ async function loadNetworkImage(imgUrl) {
     } catch (e) {}
   }
 
-  // 画像取得失敗時もテキストのみで画面を展開
   editorArea.classList.remove('hidden');
   updateCardPreview();
 }
