@@ -235,12 +235,10 @@ const saveSettingsBtn = document.getElementById('save-settings');
 let loadedImage = null;
 let currentFileName = "";
 
-// 設定パネルの開閉
 toggleConfigBtn.addEventListener('click', () => {
   configPanel.classList.toggle('hidden');
 });
 
-// タブ切替
 tabUrlBtn.addEventListener('click', () => {
   tabUrlBtn.className = "py-2.5 rounded-lg text-xs font-bold transition-all bg-red-600 text-white shadow";
   tabFileBtn.className = "py-2.5 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white";
@@ -255,7 +253,6 @@ tabFileBtn.addEventListener('click', () => {
   modeUrl.classList.add('hidden');
 });
 
-// 初期値セット
 function setTodayDate() {
   const now = new Date();
   cardDateInput.value = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -319,7 +316,6 @@ function renderCanvas() {
   updateCardPreview();
 }
 
-// ファイルドロップ機能
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-red-600'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-600'));
@@ -348,7 +344,31 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
-// ⚡ URLから一括解析
+// タイムアウト機能付きfetchヘパー
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 6000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  const response = await fetch(resource, {
+    ...options,
+    signal: controller.signal
+  });
+  clearTimeout(id);
+  return response;
+}
+
+// 画像ロードをPromise化（CORSフォールバック付）
+function loadImageAsync(srcUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Image load failed"));
+    img.src = srcUrl;
+  });
+}
+
+// ⚡ 高速＆堅牢なURL一括解析処理
 fetchBtn.addEventListener('click', async () => {
   const url = targetUrlInput.value.trim();
   if (!url) return alert('URLを入力してください');
@@ -356,75 +376,104 @@ fetchBtn.addEventListener('click', async () => {
   fetchBtn.innerHTML = `<span class="animate-spin">⏳</span> 解析中...`;
   fetchBtn.disabled = true;
 
-  let htmlContent = "";
+  let title = "";
+  let desc = "";
+  let ogImageUrl = "";
 
+  // 手法1: Microlink API (高速・Bot制限に強くOGP一括取得)
   try {
-    const proxyUrl1 = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
-    const res = await fetch(proxyUrl1);
-    if (res.ok) {
-      const data = await res.json();
-      htmlContent = data.contents;
+    const microRes = await fetchWithTimeout(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { timeout: 5000 });
+    if (microRes.ok) {
+      const resJson = await microRes.json();
+      if (resJson.status === 'success' && resJson.data) {
+        title = resJson.data.title || "";
+        desc = resJson.data.description || "";
+        ogImageUrl = resJson.data.image?.url || "";
+      }
     }
-  } catch(e) {}
-
-  if (!htmlContent) {
-    try {
-      const proxyUrl2 = "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url);
-      const res = await fetch(proxyUrl2);
-      if (res.ok) htmlContent = await res.text();
-    } catch(e) {}
+  } catch (e) {
+    console.warn("Microlink API failed/timeout, trying fallback proxy...");
   }
 
-  if (!htmlContent) {
-    alert('対象サイトの解析に失敗しました。URLを確認するか、画像の手動ドロップをお試しください。');
-    fetchBtn.innerHTML = `自動解析スタート`;
-    fetchBtn.disabled = false;
-    return;
+  // 手法2: フォールバック CORSプロキシ (Microlink失敗時)
+  if (!title) {
+    let htmlContent = "";
+    const proxyList = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+    ];
+
+    for (const pUrl of proxyList) {
+      try {
+        const res = await fetchWithTimeout(pUrl, { timeout: 5000 });
+        if (res.ok) {
+          if (pUrl.includes('allorigins')) {
+            const data = await res.json();
+            htmlContent = data.contents;
+          } else {
+            htmlContent = await res.text();
+          }
+          if (htmlContent) break;
+        }
+      } catch (e) {}
+    }
+
+    if (htmlContent) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, "text/html");
+        title = doc.querySelector('meta[property="og:title"]')?.content || doc.title || "";
+        desc = doc.querySelector('meta[property="og:description"]')?.content || doc.querySelector('meta[name="description"]')?.content || "";
+        ogImageUrl = doc.querySelector('meta[property="og:image"]')?.content || doc.querySelector('meta[name="twitter:image"]')?.content || "";
+      } catch (e) {}
+    }
   }
 
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, "text/html");
-    
-    let title = doc.querySelector('meta[property="og:title"]')?.content || doc.title || "";
-    let desc = doc.querySelector('meta[property="og:description"]')?.content || doc.querySelector('meta[name="description"]')?.content || "";
+  // テキストセット
+  if (title) cardTitleInput.value = title;
+  if (desc) cardDescInput.value = desc;
 
-    cardTitleInput.value = title;
-    cardDescInput.value = desc;
-
-    let ogImageUrl = doc.querySelector('meta[property="og:image"]')?.content || 
-                      doc.querySelector('meta[name="twitter:image"]')?.content || "";
-
-    if (ogImageUrl) {
-      if (ogImageUrl.startsWith('/')) {
+  // 画像取得＆描画
+  if (ogImageUrl) {
+    if (ogImageUrl.startsWith('/')) {
+      try {
         const u = new URL(url);
         ogImageUrl = u.origin + ogImageUrl;
-      }
-
-      const imgProxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(ogImageUrl);
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = () => {
-        loadedImage = img;
-        currentFileName = `banner_${Date.now()}.png`;
-        renderCanvas();
-        editorArea.classList.remove('hidden');
-      };
-      img.onerror = () => {
-        editorArea.classList.remove('hidden');
-        updateCardPreview();
-      };
-      img.src = imgProxy;
-    } else {
-      editorArea.classList.remove('hidden');
-      updateCardPreview();
+      } catch(e) {}
     }
 
-  } catch (err) {
-    alert('情報の抽出中にエラーが発生しました。');
-  } finally {
-    fetchBtn.innerHTML = `自動解析スタート`;
-    fetchBtn.disabled = false;
+    const imageProxies = [
+      `https://images.weserv.nl/?url=${encodeURIComponent(ogImageUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(ogImageUrl)}`,
+      ogImageUrl
+    ];
+
+    let imgLoaded = false;
+    for (const imgSrc of imageProxies) {
+      try {
+        const loadedImg = await loadImageAsync(imgSrc);
+        loadedImage = loadedImg;
+        currentFileName = `banner_${Date.now()}.png`;
+        renderCanvas();
+        imgLoaded = true;
+        break;
+      } catch (e) {}
+    }
+
+    if (!imgLoaded) {
+      console.warn("Could not load image via proxies, proceeding with text only.");
+    }
+  }
+
+  // 編集エリア表示
+  editorArea.classList.remove('hidden');
+  updateCardPreview();
+
+  fetchBtn.innerHTML = `自動解析スタート`;
+  fetchBtn.disabled = false;
+
+  if (!title && !ogImageUrl) {
+    alert("ページの解析制限により完全自動取得できませんでした。タイトル・説明文を手動で入力いただくか、画像をドロップしてください。");
   }
 });
 
@@ -466,9 +515,18 @@ publishBtn.addEventListener('click', async () => {
     statusMsg.className = "text-sm font-bold text-yellow-400";
     statusMsg.textContent = "🔄 1/2: バナー画像をアップロード中...";
     
-    const base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
+    // 画像未読み込み時のダミー生成（透明度1px）
+    let base64Img = "";
+    if (loadedImage) {
+      base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
+    } else {
+      currentFileName = `banner_default.png`;
+      ctx.fillStyle = '#1b1a18';
+      ctx.fillRect(0, 0, 1920, 1080);
+      base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
+    }
+
     const imgUrl = `https://api.github.com/repos/${user}/${repo}/contents/${currentFileName}`;
-    
     let imgSha = null;
     const imgGetRes = await fetch(imgUrl, { headers: { "Authorization": `token ${token}` } });
     if (imgGetRes.ok) imgSha = (await imgGetRes.json()).sha;
