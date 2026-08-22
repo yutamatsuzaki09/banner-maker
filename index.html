@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio v9 (AI連携版)</title>
+<title>Liminoid Banner Studio v10</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 /* 本番サイト準拠のプレビュー用スタイル */
@@ -42,14 +42,19 @@
     <div class="flex items-center gap-3">
       <span class="w-3.5 h-3.5 bg-red-600 rounded-full inline-block animate-pulse"></span>
       <div>
-        <h1 class="text-xl font-bold tracking-tight text-white">Liminoid Banner Studio v9</h1>
-        <p class="text-xs text-zinc-400 mt-0.5">AI連携（文脈補強プロンプト）＆ profile.html 自動更新ツール</p>
+        <h1 class="text-xl font-bold tracking-tight text-white">Liminoid Banner Studio v10</h1>
+        <p class="text-xs text-zinc-400 mt-0.5">背景調整 ＆ 掲載実績の読み込み・削除管理ツール</p>
       </div>
     </div>
     
-    <button id="toggle-config-btn" class="text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-lg transition-colors">
-      ⚙️ GitHub設定
-    </button>
+    <div class="flex items-center gap-2">
+      <button id="toggle-manage-btn" class="text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+        📋 掲載中実績の削除・管理
+      </button>
+      <button id="toggle-config-btn" class="text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded-lg transition-colors">
+        ⚙️ 設定
+      </button>
+    </div>
   </div>
 
   <!-- GitHub設定パネル -->
@@ -74,6 +79,23 @@
     </div>
   </div>
 
+  <!-- 掲載実績の管理・削除パネル -->
+  <div id="manage-panel" class="hidden mb-8 bg-zinc-950 border border-red-900/50 rounded-xl p-5 text-xs space-y-4">
+    <div class="flex items-center justify-between">
+      <p class="font-bold text-white flex items-center gap-2">
+        <span>📋 現在 profile.html に掲載されている実績一覧</span>
+      </p>
+      <button id="load-list-btn" class="bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] px-3 py-1.5 rounded-lg border border-zinc-700 transition-colors">
+        🔄 実績リストを更新
+      </button>
+    </div>
+    <p class="text-zinc-400 text-[11px]">誤って投稿してしまった実績や、不要になった実績の「削除」ボタンを押すことで、本番サイトから削除できます。</p>
+    
+    <div id="manage-list-container" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+      <p class="text-zinc-500 italic text-center py-4">「実績リストを更新」を押すと、現在掲載中の実績が表示されます。</p>
+    </div>
+  </div>
+
   <!-- STEP 1：AIプロンプト作成 ＆ AI回答貼り付け -->
   <div class="space-y-6 mb-8">
     
@@ -90,7 +112,7 @@
           <span>📋 ChatGPT用指示文をコピー</span>
         </button>
       </div>
-      <p id="prompt-copy-msg" class="text-[11px] text-zinc-400 pl-1">※URLを入力してボタンを押すと、背景文脈入りの指示文がコピーされます。ChatGPT等にそのまま貼り付けてください。</p>
+      <p id="prompt-copy-msg" class="text-[11px] text-zinc-400 pl-1">※URLを入力してボタンを押すと指示文がコピーされます。ChatGPT等に貼り付けて送信してください。</p>
     </div>
 
     <!-- 1-B：AI回答の貼り付けエリア -->
@@ -117,11 +139,21 @@
   <!-- 編集・プレビューエリア（JSON解析後に自動展開） -->
   <div id="editor-area" class="hidden space-y-8 border-t border-zinc-800 pt-8">
     
-    <!-- STEP 2：テキスト・掲載年月 微調整 -->
+    <!-- STEP 2：テキスト・背景色の微調整 -->
     <div>
-      <div class="flex items-center gap-2 mb-4">
-        <span class="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-xs flex items-center justify-center">3</span>
-        <h2 class="text-sm font-bold text-white">カード記載内容の微調整（必要に応じて）</h2>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-xs flex items-center justify-center">3</span>
+          <h2 class="text-sm font-bold text-white">テキストとバナー背景色の調整</h2>
+        </div>
+
+        <!-- 復活：背景色切替ボタン群 -->
+        <div class="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg p-1 text-xs">
+          <span class="text-zinc-500 text-[10px] pl-1 font-bold">画像背景:</span>
+          <button id="bg-transparent-btn" class="px-2.5 py-1 rounded font-bold bg-zinc-800 text-white transition-colors">透過</button>
+          <button id="bg-dark-btn" class="px-2.5 py-1 rounded font-bold text-zinc-400 hover:text-white transition-colors">ダーク(#1b1a18)</button>
+          <button id="bg-white-btn" class="px-2.5 py-1 rounded font-bold text-zinc-400 hover:text-white transition-colors">白背景</button>
+        </div>
       </div>
       
       <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-4">
@@ -194,6 +226,10 @@
 <script>
 const toggleConfigBtn = document.getElementById('toggle-config-btn');
 const configPanel = document.getElementById('config-panel');
+const toggleManageBtn = document.getElementById('toggle-manage-btn');
+const managePanel = document.getElementById('manage-panel');
+const loadListBtn = document.getElementById('load-list-btn');
+const manageListContainer = document.getElementById('manage-list-container');
 
 const targetUrlInput = document.getElementById('target-url');
 const copyPromptBtn = document.getElementById('copy-prompt-btn');
@@ -210,6 +246,10 @@ const editorArea = document.getElementById('editor-area');
 const cardDateInput = document.getElementById('card-date');
 const cardTitleInput = document.getElementById('card-title');
 const cardDescInput = document.getElementById('card-desc');
+
+const bgTransparentBtn = document.getElementById('bg-transparent-btn');
+const bgDarkBtn = document.getElementById('bg-dark-btn');
+const bgWhiteBtn = document.getElementById('bg-white-btn');
 
 const publishBtn = document.getElementById('publish-btn');
 const cancelBtn = document.getElementById('cancel-btn');
@@ -229,8 +269,15 @@ const saveSettingsBtn = document.getElementById('save-settings');
 
 let loadedImage = null;
 let currentFileName = "";
+let bgMode = "transparent"; // 'transparent', 'dark', 'white'
 
 toggleConfigBtn.addEventListener('click', () => configPanel.classList.toggle('hidden'));
+toggleManageBtn.addEventListener('click', () => {
+  managePanel.classList.toggle('hidden');
+  if (!managePanel.classList.contains('hidden')) {
+    loadExistingAchievements();
+  }
+});
 
 function setTodayDate() {
   const now = new Date();
@@ -253,6 +300,31 @@ saveSettingsBtn.addEventListener('click', () => {
 canvas.width = 1920;
 canvas.height = 1080;
 
+// ★ 背景色切り替え処理
+bgTransparentBtn.addEventListener('click', () => {
+  bgMode = "transparent";
+  updateBgButtons();
+  renderCanvas();
+});
+
+bgDarkBtn.addEventListener('click', () => {
+  bgMode = "dark";
+  updateBgButtons();
+  renderCanvas();
+});
+
+bgWhiteBtn.addEventListener('click', () => {
+  bgMode = "white";
+  updateBgButtons();
+  renderCanvas();
+});
+
+function updateBgButtons() {
+  bgTransparentBtn.className = bgMode === 'transparent' ? "px-2.5 py-1 rounded font-bold bg-zinc-800 text-white transition-colors" : "px-2.5 py-1 rounded font-bold text-zinc-400 hover:text-white transition-colors";
+  bgDarkBtn.className = bgMode === 'dark' ? "px-2.5 py-1 rounded font-bold bg-zinc-800 text-white transition-colors" : "px-2.5 py-1 rounded font-bold text-zinc-400 hover:text-white transition-colors";
+  bgWhiteBtn.className = bgMode === 'white' ? "px-2.5 py-1 rounded font-bold bg-white text-black transition-colors" : "px-2.5 py-1 rounded font-bold text-zinc-400 hover:text-white transition-colors";
+}
+
 function updateCardPreview() {
   previewCardDate.textContent = cardDateInput.value || "2026.08";
   previewCardTitle.textContent = cardTitleInput.value || "（タイトル）";
@@ -266,7 +338,7 @@ function updateCardPreview() {
   input.addEventListener('input', updateCardPreview);
 });
 
-// 📋 文脈強化版 AIプロンプトの自動生成 ＆ コピー機能
+// 📋 AIプロンプトの自動生成 ＆ コピー機能
 copyPromptBtn.addEventListener('click', () => {
   const url = targetUrlInput.value.trim() || "[対象ページのURL]";
   const promptText = `あなたはビジネスコンサルタントのパートナー「Liminoid（代表：松崎雄汰）」のWeb広報担当です。
@@ -325,7 +397,6 @@ aiJsonInput.addEventListener('input', async () => {
   }
 });
 
-// ネットワーク画像取得ロード
 async function loadNetworkImage(imgUrl) {
   const imageProxies = [
     `https://images.weserv.nl/?url=${encodeURIComponent(imgUrl)}`,
@@ -355,11 +426,18 @@ async function loadNetworkImage(imgUrl) {
   updateCardPreview();
 }
 
+// キャンバスを描画する処理（指定した背景色を描画）
 function renderCanvas() {
   if (!loadedImage) return;
   ctx.clearRect(0, 0, 1920, 1080);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, 1920, 1080);
+
+  if (bgMode === "white") {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1920, 1080);
+  } else if (bgMode === "dark") {
+    ctx.fillStyle = '#1b1a18';
+    ctx.fillRect(0, 0, 1920, 1080);
+  }
 
   const maxW = 1920 * 0.85;
   const maxH = 1080 * 0.85;
@@ -405,6 +483,132 @@ cancelBtn.addEventListener('click', () => {
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
+// 📋 profile.html から掲載中の実績リストを読み込んで表示・削除機能
+loadListBtn.addEventListener('click', loadExistingAchievements);
+
+async function loadExistingAchievements() {
+  const token = localStorage.getItem('gh_token');
+  const user = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
+  const repo = localStorage.getItem('gh_repo') || 'liminoid';
+
+  if (!token) {
+    manageListContainer.innerHTML = `<p class="text-red-400">GitHubトークンが未設定です。右上の設定から入力してください。</p>`;
+    return;
+  }
+
+  manageListContainer.innerHTML = `<p class="text-yellow-400 animate-pulse">🔄 profile.html から掲載リストを取得中...</p>`;
+
+  try {
+    const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/profile.html`;
+    const res = await fetch(htmlUrl, { headers: { "Authorization": `token ${token}` } });
+    if (!res.ok) throw new Error("profile.htmlの取得に失敗しました");
+
+    const htmlData = await res.json();
+    const currentHtml = b64_to_utf8(htmlData.content);
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(currentHtml, "text/html");
+    const cards = doc.querySelectorAll('#achievements .achieve-card');
+
+    if (cards.length === 0) {
+      manageListContainer.innerHTML = `<p class="text-zinc-500">現在掲載中の実績はありません。</p>`;
+      return;
+    }
+
+    manageListContainer.innerHTML = '';
+    cards.forEach((card, idx) => {
+      const date = card.querySelector('.achieve-date')?.textContent.trim() || "";
+      const title = card.querySelector('h3')?.textContent.trim() || "無題の実績";
+      const imgSrc = card.querySelector('img')?.getAttribute('src') || "";
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = "flex items-center justify-between gap-3 p-3 bg-zinc-900 border border-zinc-800 rounded-lg";
+      itemDiv.innerHTML = `
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div class="w-12 h-8 bg-zinc-950 rounded border border-zinc-800 flex-shrink-0 overflow-hidden">
+            <img src="https://liminoid.net/${imgSrc}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+          </div>
+          <div class="truncate">
+            <span class="text-[10px] text-red-400 font-mono block">${date}</span>
+            <p class="text-xs font-bold text-white truncate">${title}</p>
+          </div>
+        </div>
+        <button onclick="deleteAchievement(${idx}, '${title.replace(/'/g, "\\'")}')" class="bg-red-950/80 hover:bg-red-900 text-red-300 hover:text-white px-3 py-1.5 rounded text-[11px] border border-red-800/60 transition-colors flex-shrink-0">
+          🗑️ 削除
+        </button>
+      `;
+      manageListContainer.appendChild(itemDiv);
+    });
+
+  } catch (e) {
+    manageListContainer.innerHTML = `<p class="text-red-400">読み込みエラー: ${e.message}</p>`;
+  }
+}
+
+// 🗑️ 実績の削除実行機能
+async function deleteAchievement(cardIndex, title) {
+  if (!confirm(`以下の実績を profile.html から削除します。よろしいですか？\n\n【タイトル】${title}`)) return;
+
+  const token = localStorage.getItem('gh_token');
+  const user = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
+  const repo = localStorage.getItem('gh_repo') || 'liminoid';
+
+  try {
+    const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/profile.html`;
+    const res = await fetch(htmlUrl, { headers: { "Authorization": `token ${token}` } });
+    if (!res.ok) throw new Error("profile.htmlの取得に失敗しました");
+
+    const htmlData = await res.json();
+    const currentHtml = b64_to_utf8(htmlData.content);
+    const htmlSha = htmlData.sha;
+
+    const listRegex = /(<section id="achievements"[\s\S]*?<div class="grid sm:grid-cols-2 gap-6">)([\s\S]*?)(<\/div>\s*<\/section>)/;
+    const match = currentHtml.match(listRegex);
+    if (!match) throw new Error("profile.html内の実績セクションが見つかりません。");
+
+    const prefix = match[1];
+    const existingCardsHtml = match[2];
+    const suffix = match[3];
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = existingCardsHtml;
+
+    const cards = Array.from(tempDiv.querySelectorAll('.achieve-card'));
+    if (cards[cardIndex]) {
+      cards[cardIndex].remove();
+    }
+
+    tempDiv.innerHTML = '';
+    cards.forEach((card, i) => {
+      if (i !== cardIndex) {
+        tempDiv.appendChild(card);
+        tempDiv.appendChild(document.createTextNode("\n\n"));
+      }
+    });
+
+    const updatedHtml = currentHtml.replace(listRegex, prefix + "\n\n" + tempDiv.innerHTML + suffix);
+
+    const htmlPutRes = await fetch(htmlUrl, {
+      method: "PUT",
+      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `Delete achievement from profile.html: ${title}`,
+        content: utf8_to_b64(updatedHtml),
+        sha: htmlSha
+      })
+    });
+
+    if (!htmlPutRes.ok) throw new Error("profile.htmlの削除更新に失敗しました");
+
+    alert(`「${title}」を削除しました。`);
+    loadExistingAchievements();
+
+  } catch (e) {
+    alert(`削除に失敗しました: ${e.message}`);
+  }
+}
+
+// 🚀 公開適用処理
 publishBtn.addEventListener('click', async () => {
   const token = localStorage.getItem('gh_token');
   const user = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
@@ -434,7 +638,7 @@ publishBtn.addEventListener('click', async () => {
       base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
     } else {
       currentFileName = `banner_default.png`;
-      ctx.fillStyle = '#1b1a18';
+      ctx.fillStyle = bgMode === 'white' ? '#FFFFFF' : '#1b1a18';
       ctx.fillRect(0, 0, 1920, 1080);
       base64Img = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, "");
     }
