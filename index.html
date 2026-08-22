@@ -3,14 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminoid Banner Studio v6</title>
+<title>Liminoid Banner Studio v6 (Profile用)</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* 本番サイトと同等のカードプレビュー用スタイル */
+.achieve-card-preview {
+  background: #141312;
+  border: 1px solid #2a2825;
+  border-radius: 16px;
+  overflow: hidden;
+  display: block;
+}
+.achieve-thumb-preview {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #1b1a18;
+}
+.achieve-date-preview {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(10,10,10,0.85);
+  border: 1px solid #c8102e;
+  color: #c8102e;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 2px 10px;
+  border-radius: 9999px;
+}
+</style>
 </head>
 <body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center p-6 py-10">
 
 <div class="max-w-2xl w-full bg-neutral-800 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
   <h1 class="text-xl font-bold mb-1 text-center">Liminoid Banner Studio v6</h1>
-  <p class="text-xs text-neutral-400 text-center mb-6">画像生成 ＋ 自動スクレイピング ＋ HTML自動ソート＆更新</p>
+  <p class="text-xs text-neutral-400 text-center mb-6">profile.html用 実績自動更新＆選択的公開ツール</p>
 
   <!-- GitHub設定 -->
   <details class="mb-6 bg-neutral-900/50 border border-neutral-700 rounded-xl p-4 text-xs">
@@ -43,7 +69,7 @@
     </div>
   </div>
 
-  <!-- プレビューと情報入力エリア（初期は非表示） -->
+  <!-- エディタエリア -->
   <div id="editor-area" class="hidden flex-col gap-6">
     
     <!-- ステップ2：URL入力と自動抽出 -->
@@ -57,25 +83,25 @@
       <div class="flex flex-col gap-3">
         <div class="flex gap-3">
           <div class="w-1/4">
-            <label class="block text-xs text-neutral-400 mb-1">年月（自動/手動）</label>
+            <label class="block text-xs text-neutral-400 mb-1">年月</label>
             <input type="text" id="card-date" placeholder="2026.08" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-display">
           </div>
           <div class="w-3/4">
-            <label class="block text-xs text-neutral-400 mb-1">タイトル（実績カードの見出し）</label>
+            <label class="block text-xs text-neutral-400 mb-1">タイトル</label>
             <input type="text" id="card-title" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
           </div>
         </div>
         <div>
-          <label class="block text-xs text-neutral-400 mb-1">説明文（1〜2行程度）</label>
+          <label class="block text-xs text-neutral-400 mb-1">説明文</label>
           <textarea id="card-desc" rows="2" class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"></textarea>
         </div>
       </div>
     </div>
 
-    <!-- プレビュー画像と背景色切り替え -->
+    <!-- プレビューとキャンバス調整 -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <p class="text-sm font-bold">③ 生成画像プレビュー</p>
+        <p class="text-sm font-bold">③ 画像調整・キャンバス</p>
         <div class="flex items-center gap-2 bg-neutral-900 border border-neutral-700 rounded-lg p-1 text-xs">
           <span class="text-neutral-400 pl-1">背景:</span>
           <button id="bg-transparent-btn" class="px-2 py-1 rounded font-bold bg-neutral-700 text-white">透過</button>
@@ -87,10 +113,29 @@
       </div>
     </div>
 
-    <!-- アクションボタン -->
-    <div class="w-full flex flex-col gap-2 mt-2">
-      <button id="publish-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors cursor-pointer text-base shadow-lg">
-        🚀 画像＋テキストをサイトに公開（時系列順に自動ソート）
+    <!-- ステップ4：完成時の実表示シミュレーションプレビュー -->
+    <div class="bg-neutral-900/80 p-5 rounded-xl border border-red-900/50">
+      <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-3">④ 実績カード完成プレビュー（公開前の最終確認）</p>
+      
+      <div class="achieve-card-preview p-0">
+        <div class="achieve-thumb-preview">
+          <span class="achieve-date-preview" id="preview-card-date">2026.08</span>
+          <img id="preview-card-img" class="w-full h-full object-cover" src="" alt="preview">
+        </div>
+        <div class="p-4">
+          <h3 class="text-white font-bold text-sm mb-1" id="preview-card-title">（タイトルがここに入ります）</h3>
+          <p class="text-neutral-400 text-xs leading-relaxed" id="preview-card-desc">（説明文がここに入ります）</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 適用選択アクションボタン -->
+    <div class="w-full flex flex-col sm:flex-row gap-3 mt-2">
+      <button id="cancel-btn" class="sm:w-1/3 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 font-bold py-3.5 rounded-xl transition-colors cursor-pointer text-sm">
+        ↩️ キャンセル / やり直す
+      </button>
+      <button id="publish-btn" class="sm:w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-colors cursor-pointer text-sm shadow-lg">
+        🚀 この内容で profile.html に適用（公開）
       </button>
     </div>
     
@@ -111,7 +156,14 @@ const cardDateInput = document.getElementById('card-date');
 const cardTitleInput = document.getElementById('card-title');
 const cardDescInput = document.getElementById('card-desc');
 const publishBtn = document.getElementById('publish-btn');
+const cancelBtn = document.getElementById('cancel-btn');
 const statusMsg = document.getElementById('status-msg');
+
+// 実績カードリアルタイムプレビュー用要素
+const previewCardDate = document.getElementById('preview-card-date');
+const previewCardImg = document.getElementById('preview-card-img');
+const previewCardTitle = document.getElementById('preview-card-title');
+const previewCardDesc = document.getElementById('preview-card-desc');
 
 const bgTransparentBtn = document.getElementById('bg-transparent-btn');
 const bgWhiteBtn = document.getElementById('bg-white-btn');
@@ -126,15 +178,12 @@ let loadedImage = null;
 let currentFileName = "";
 let isWhiteBg = false;
 
-// 今日の日付をセットする関数
 function setTodayDate() {
   const now = new Date();
   cardDateInput.value = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+  updateCardPreview();
 }
 
-// ----------------------------------------------------
-// 初期設定 & ブックマークレットからの受取処理
-// ----------------------------------------------------
 ghTokenInput.value = localStorage.getItem('gh_token') || '';
 ghUserInput.value = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
 ghRepoInput.value = localStorage.getItem('gh_repo') || 'liminoid';
@@ -149,7 +198,21 @@ saveSettingsBtn.addEventListener('click', () => {
 canvas.width = 1920;
 canvas.height = 1080;
 
-// ★ ブックマークレットからデータが届いているか判定して受取
+// カード完成プレビューのリアルタイム更新
+function updateCardPreview() {
+  previewCardDate.textContent = cardDateInput.value || "2026.08";
+  previewCardTitle.textContent = cardTitleInput.value || "（タイトルがここに入ります）";
+  previewCardDesc.textContent = cardDescInput.value || "（説明文がここに入ります）";
+  if (canvas) {
+    previewCardImg.src = canvas.toDataURL('image/png');
+  }
+}
+
+// 入力イベントリスナーの追加
+[cardDateInput, cardTitleInput, cardDescInput].forEach(input => {
+  input.addEventListener('input', updateCardPreview);
+});
+
 window.addEventListener('load', () => {
   setTodayDate();
   
@@ -163,13 +226,12 @@ window.addEventListener('load', () => {
     if (titleParam) cardTitleInput.value = titleParam;
     if (descParam) cardDescInput.value = descParam;
 
-    // 入力エリアを自動で開く
     editorArea.classList.remove('hidden');
     editorArea.classList.add('flex');
+    updateCardPreview();
   }
 });
 
-// キャンバス描画処理
 function renderCanvas() {
   if (!loadedImage) return;
   ctx.clearRect(0, 0, 1920, 1080);
@@ -188,9 +250,9 @@ function renderCanvas() {
   const posY = (1080 - newH) / 2;
 
   ctx.drawImage(loadedImage, posX, posY, newW, newH);
+  updateCardPreview();
 }
 
-// 背景切り替えイベント
 bgTransparentBtn.addEventListener('click', () => {
   isWhiteBg = false;
   bgTransparentBtn.className = "px-2 py-1 rounded font-bold bg-neutral-700 text-white";
@@ -205,7 +267,6 @@ bgWhiteBtn.addEventListener('click', () => {
   renderCanvas();
 });
 
-// 画像ドロップ処理
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-red-500'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-red-500'));
@@ -236,7 +297,6 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
-// URLからの手動自動抽出ボタン
 fetchBtn.addEventListener('click', async () => {
   const url = targetUrlInput.value.trim();
   if (!url) return alert('URLを入力してください');
@@ -264,7 +324,7 @@ fetchBtn.addEventListener('click', async () => {
   }
 
   if (!htmlContent) {
-    alert('対象サイトのセキュリティ制限により自動抽出できませんでした。ブックマークレットを利用するか、手動で入力してください。');
+    alert('自動抽出できませんでした。手動で入力してください。');
     fetchBtn.textContent = "自動抽出";
     fetchBtn.disabled = false;
     return;
@@ -279,18 +339,30 @@ fetchBtn.addEventListener('click', async () => {
 
     cardTitleInput.value = title;
     cardDescInput.value = desc;
+    updateCardPreview();
   } catch (err) {
-    alert('ページの読み取り中にエラーが発生しました。手動で入力してください。');
+    alert('エラーが発生しました。手動で入力してください。');
   } finally {
     fetchBtn.textContent = "自動抽出";
     fetchBtn.disabled = false;
   }
 });
 
+// キャンセル処理
+cancelBtn.addEventListener('click', () => {
+  if (confirm('入力内容を破棄して編集を完了しますか？')) {
+    editorArea.classList.add('hidden');
+    editorArea.classList.remove('flex');
+    loadedImage = null;
+    fileInput.value = "";
+    statusMsg.textContent = "";
+  }
+});
+
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
-// 🚀 GitHubへダイレクト公開処理
+// 🚀 GitHubへダイレクト公開処理 (選択・確認ステップ付き)
 publishBtn.addEventListener('click', async () => {
   const token = localStorage.getItem('gh_token');
   const user = localStorage.getItem('gh_user') || 'yutamatsuzaki09';
@@ -300,6 +372,10 @@ publishBtn.addEventListener('click', async () => {
   if (!targetUrlInput.value) return alert('URLを入力してください。');
   if (!cardTitleInput.value) return alert('タイトルを入力してください。');
   if (!cardDateInput.value) return alert('年月を入力してください。');
+
+  // ★ 最終確認ダイアログ
+  const confirmMsg = `以下の実績を profile.html に公開します。よろしいですか？\n\n【年月】${cardDateInput.value}\n【タイトル】${cardTitleInput.value}`;
+  if (!confirm(confirmMsg)) return;
 
   publishBtn.disabled = true;
   publishBtn.classList.add('opacity-50');
@@ -322,11 +398,11 @@ publishBtn.addEventListener('click', async () => {
     });
     if (!imgPutRes.ok) throw new Error("画像のアップロードに失敗しました");
 
-    statusMsg.textContent = "🔄 2/2: サイト全体を最新順に自動ソート中...";
-    const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/index.html`;
+    statusMsg.textContent = "🔄 2/2: profile.html を最新順に自動ソート更新中...";
+    const htmlUrl = `https://api.github.com/repos/${user}/${repo}/contents/profile.html`;
     
     const htmlGetRes = await fetch(htmlUrl, { headers: { "Authorization": `token ${token}` } });
-    if (!htmlGetRes.ok) throw new Error("index.htmlの取得に失敗しました");
+    if (!htmlGetRes.ok) throw new Error("profile.htmlの取得に失敗しました");
     
     const htmlData = await htmlGetRes.json();
     const currentHtml = b64_to_utf8(htmlData.content);
@@ -336,7 +412,7 @@ publishBtn.addEventListener('click', async () => {
 <a href="${targetUrlInput.value}" target="_blank" rel="noopener" class="achieve-card">
 <div class="achieve-thumb">
 <span class="achieve-date">${cardDateInput.value}</span>
-<img src="${currentFileName}" alt="${cardTitleInput.value}" onerror="this.style.display='none'">
+<img src="${currentFileName}" alt="${cardTitleInput.value}" loading="lazy" decoding="async" onerror="this.style.display='none'">
 <span class="achieve-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
 </div>
 <div class="p-5">
@@ -347,7 +423,7 @@ publishBtn.addEventListener('click', async () => {
 
     const listRegex = /(<section id="achievements"[\s\S]*?<div class="grid sm:grid-cols-2 gap-6">)([\s\S]*?)(<\/div>\s*<\/section>)/;
     const match = currentHtml.match(listRegex);
-    if (!match) throw new Error("index.html内に置換用の目印が見つかりません。");
+    if (!match) throw new Error("profile.html内に置換用の目印（#achievements）が見つかりません。");
 
     const prefix = match[1];
     const existingCardsHtml = match[2];
@@ -379,16 +455,16 @@ publishBtn.addEventListener('click', async () => {
       method: "PUT",
       headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: `Add new achievement & auto-sort: ${cardTitleInput.value}`,
+        message: `Add new achievement to profile.html: ${cardTitleInput.value}`,
         content: utf8_to_b64(updatedHtml),
         sha: htmlSha
       })
     });
     
-    if (!htmlPutRes.ok) throw new Error("index.htmlの保存に失敗しました");
+    if (!htmlPutRes.ok) throw new Error("profile.htmlの保存に失敗しました");
 
     statusMsg.className = "text-sm font-bold text-center text-green-400";
-    statusMsg.textContent = `✅ 完全成功！画像と実績が時系列順に公開されました。`;
+    statusMsg.textContent = `✅ 公開完了！profile.html が正常に更新されました。`;
     
   } catch (err) {
     statusMsg.className = "text-sm font-bold text-center text-red-400";
